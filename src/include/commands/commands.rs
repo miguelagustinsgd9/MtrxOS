@@ -19,12 +19,6 @@ pub fn ejecutar_comando(
         "sdmll" => {
             crate::include::sdmlle1::ejecutar(sistema);
         }
-        "controls" => {
-            writeln!(sistema.stdout(), "------ Available MtrxOS controls ------").unwrap();
-            writeln!(sistema.stdout(), "f1           : Muestra la lista de comandos").unwrap();
-            writeln!(sistema.stdout(), "escape       : Apaga la computadora").unwrap();
-            writeln!(sistema.stdout(), "---------------------------------------").unwrap();
-        }
         "intro" => {
             crate::intro::mostrar_intro(sistema);
         }
@@ -272,7 +266,7 @@ pub fn ejecutar_comando(
                 };
 
                 let stdout = sistema.stdout();
-                let _ = writeln!(stdout, "--- Monitor de Sistema Real ---");
+                let _ = writeln!(stdout, "--- Monitor de Sistema ---");
                 let _ = write!(stdout, "CPU Ciclos: [");
                 for i in 0..10 {
                     if i < cpu_load as usize { let _ = write!(stdout, "|"); }
@@ -326,14 +320,11 @@ pub fn ejecutar_comando(
                 let arg_w = args.next().unwrap_or("");
                 let arg_h = args.next().unwrap_or("");
 
-                if arg_w.is_empty() || arg_h.is_empty() {
-                    writeln!(sistema.stdout(), "Uso: res [ancho]x[alto] (Ej: res 1280x720)").unwrap();
-                } else {
+                if !arg_w.is_empty() && !arg_h.is_empty() {
                     let target_w = arg_w.parse::<usize>().unwrap_or(0);
                     let target_h = arg_h.parse::<usize>().unwrap_or(0);
 
                     let mut modo_encontrado = None;
-
                     for modo in sistema.stdout().modes() {
                         if modo.columns() == target_w && modo.rows() == target_h {
                             modo_encontrado = Some(modo);
@@ -349,8 +340,7 @@ pub fn ejecutar_comando(
                             writeln!(sistema.stdout(), "Error critico al cambiar el modo.").unwrap();
                         }
                     } else {
-                        writeln!(sistema.stdout(), "Error: La resolucion {}x{} no es soportada por este monitor.", target_w, target_h).unwrap();
-                        writeln!(sistema.stdout(), "Tip: Prueba con resoluciones estandar (80x25, 100x31).").unwrap();
+                        writeln!(sistema.stdout(), "Error: La resolucion {}x{} no es soportada.", target_w, target_h).unwrap();
                     }
                 }
             }
@@ -358,8 +348,16 @@ pub fn ejecutar_comando(
         "app" => {
             match argumentos {
                 "zim" => zim::iniciar_ide(sistema),
-                "" => writeln!(sistema.stdout(), "Uso: app [zim,]").unwrap(),
-                _ => writeln!(sistema.stdout(), "La app '{}' no esta instalada.", argumentos).unwrap(),
+                "notes" => notes::ejecutar(sistema),
+                "sndmker" => sndmker::ejecutar(sistema),
+                "imageviewer" => {
+                    if let Some(mut gl) = crate::mtrx_gl::MtrxGl::init(sistema) {
+                        crate::imageviewer::ejecutar(sistema, &mut gl);
+                    } else {
+                        writeln!(sistema.stdout(), "Error: No se pudo inicializar MtrxGL.").unwrap();
+                    }
+                },
+                _ => {},
             }
         }
         "ascii" => {
@@ -375,8 +373,15 @@ pub fn ejecutar_comando(
                 let _ = writeln!(sistema.stdout(), "");
             }
         }
-	"game" => {
+	    "game" => {
             match argumentos {
+                "flightsm" => {
+                    if let Some(mut gl) = crate::mtrx_gl::MtrxGl::init(sistema) {
+                        crate::flightsm::run(sistema, &mut gl);
+                    } else {
+                        writeln!(sistema.stdout(), "Error: No se pudo inicializar MtrxGL.").unwrap();
+                    }
+                },
                 "buggy" => buggy::iniciar_juego(sistema),
                 "raycaster" => raycaster::iniciar_juego(sistema),
                 "flappy" => {
@@ -393,8 +398,7 @@ pub fn ejecutar_comando(
                         writeln!(sistema.stdout(), "Error: No se pudo inicializar MtrxGL.").unwrap();
                     }
                 },
-                "" => writeln!(sistema.stdout(), "Uso: game [buggy, raycaster, flappy, geometry]").unwrap(),
-                _ => writeln!(sistema.stdout(), "El juego '{}' no esta instalado.", argumentos).unwrap(),
+                _ => {},
             }
         }
         "wait" => {
@@ -402,8 +406,6 @@ pub fn ejecutar_comando(
             if segundos > 0 {
                 writeln!(sistema.stdout(), "Esperando {} segundos...", segundos).unwrap();
                 sistema.boot_services().stall((segundos * 1_000_000) as usize);
-            } else {
-                writeln!(sistema.stdout(), "Uso: wait [segundos]").unwrap();
             }
         }
         "alias" => {
@@ -459,17 +461,61 @@ pub fn ejecutar_comando(
             }
         }
         "matrix" => {
-            sistema.stdout().set_color(uefi::proto::console::text::Color::LightGreen, uefi::proto::console::text::Color::Black).unwrap();
-            for _ in 0..1000 {
-                let semilla = sistema.runtime_services().get_time().unwrap().nanosecond();
-                let char_bit = if semilla % 2 == 0 { "0 " } else { "1 " };
+            let mut seed = sistema.runtime_services().get_time().unwrap().nanosecond();
+            let cols = 79;
+            let rows = 24;
+            let mut columns = [0i32; 80];
 
-                write!(sistema.stdout(), "{}", char_bit).unwrap();
-
-                sistema.boot_services().stall(2_000);
+            for i in 0..cols {
+                seed = seed.wrapping_mul(1103515245).wrapping_add(12345);
+                columns[i] = -((seed % 40) as i32);
             }
-            writeln!(sistema.stdout(), "").unwrap();
-            sistema.stdout().set_color(uefi::proto::console::text::Color::White, uefi::proto::console::text::Color::Black).unwrap();
+
+            let _ = sistema.stdout().clear();
+
+            loop {
+                if let Ok(Some(key)) = sistema.stdin().read_key() {
+                    if let uefi::proto::console::text::Key::Printable(c) = key {
+                        let character = u16::from(c) as u8 as char;
+                        if character == 'q' || character == 'Q' { break; }
+                    }
+                }
+
+                for x in 0..cols {
+                    let y = columns[x];
+
+                    if y >= 0 && y < rows {
+                        let _ = sistema.stdout().set_cursor_position(x, y as usize);
+                        let _ = sistema.stdout().set_color(Color::White, Color::Black);
+                        seed = seed.wrapping_mul(1103515245).wrapping_add(12345);
+                        let _ = write!(sistema.stdout(), "{}", ((seed % 93) + 33) as u8 as char);
+                    }
+
+                    let trail = y - 1;
+                    if trail >= 0 && trail < rows {
+                        let _ = sistema.stdout().set_cursor_position(x, trail as usize);
+                        let _ = sistema.stdout().set_color(Color::LightGreen, Color::Black);
+                        seed = seed.wrapping_mul(1103515245).wrapping_add(12345);
+                        let _ = write!(sistema.stdout(), "{}", ((seed % 93) + 33) as u8 as char);
+                    }
+
+                    let cleanup = y - 12;
+                    if cleanup >= 0 && cleanup < rows {
+                        let _ = sistema.stdout().set_cursor_position(x, cleanup as usize);
+                        let _ = write!(sistema.stdout(), " ");
+                    }
+
+                    columns[x] += 1;
+                    if columns[x] >= rows + 12 {
+                        seed = seed.wrapping_mul(1103515245).wrapping_add(12345);
+                        columns[x] = -((seed % 20) as i32);
+                    }
+                }
+                sistema.boot_services().stall(25_000);
+            }
+
+            let _ = sistema.stdout().set_color(Color::White, Color::Black);
+            let _ = sistema.stdout().clear();
         }
         "date" => {
             if let Ok(tiempo) = sistema.runtime_services().get_time() {
@@ -489,7 +535,7 @@ pub fn ejecutar_comando(
                     "20" => { *microsegundos_frame = 50_000;  writeln!(sistema.stdout(), "FPS: 20").unwrap(); }
                     "25" => { *microsegundos_frame = 40_000;  writeln!(sistema.stdout(), "FPS: 25").unwrap(); }
                     "30" => { *microsegundos_frame = 33_333;  writeln!(sistema.stdout(), "FPS: 30").unwrap(); }
-                    _ => writeln!(sistema.stdout(), "Uso: tfps [10, 15, 20, 25, 30]").unwrap(),
+                    _ => {}
                 }
             }
         }
@@ -507,7 +553,7 @@ pub fn ejecutar_comando(
                 "0c" => {
                     sistema.stdout().set_color(uefi::proto::console::text::Color::LightRed, uefi::proto::console::text::Color::Black).unwrap();
                 }
-                _ => writeln!(sistema.stdout(), "Uso: color [0a, 0b, 0c, def]").unwrap(),
+                _ => {}
             }
         }
         "echo" => {
@@ -537,79 +583,6 @@ pub fn ejecutar_comando(
                 writeln!(sistema.stdout(), "{}", nombre_actual).unwrap();
             }
         }
-        "help" => {
-            writeln!(sistema.stdout(), "------ Available MtrxOS commands ------").unwrap();
-            writeln!(sistema.stdout(), "help         : Muestra esta lista de comandos").unwrap();
-            writeln!(sistema.stdout(), "clear        : Limpia la pantalla").unwrap();
-            writeln!(sistema.stdout(), "fetch        : Muestra info del sistema y logo").unwrap();
-            writeln!(sistema.stdout(), "echo [txt]   : Imprime un texto en pantalla").unwrap();
-
-            loop {
-                if let Ok(Some(_)) = sistema.stdin().read_key() {
-                    break;
-                }
-                sistema.boot_services().stall(10_000);
-            }
-
-            writeln!(sistema.stdout(), "color [cod]  : Cambia color (0a, 0b, 0c, def)").unwrap();
-            writeln!(sistema.stdout(), "res [WxH]    : Cambia a una res especifica (Ej: res 100x31)").unwrap();
-            writeln!(sistema.stdout(), "tfps [num]   : Ajusta los FPS (10, 15, 20, 25, 30)").unwrap();
-            writeln!(sistema.stdout(), "whoami       : Muestra el usuario actual").unwrap();
-            writeln!(sistema.stdout(), "date         : Muestra la fecha y hora real del hardware").unwrap();
-
-            loop {
-                if let Ok(Some(_)) = sistema.stdin().read_key() {
-                    break;
-                }
-                sistema.boot_services().stall(10_000);
-            }
-
-            writeln!(sistema.stdout(), "matrix       : Ejecuta el protector de pantalla digital").unwrap();
-            writeln!(sistema.stdout(), "sudo         : Cambia a modo superusuario (root)").unwrap();
-            writeln!(sistema.stdout(), "uname [n]    : Cambia tu nombre de usuario").unwrap();
-            writeln!(sistema.stdout(), "clcache      : Elimina la cache").unwrap();
-            writeln!(sistema.stdout(), "optz         : Optimiza el sistema").unwrap();
-
-            loop {
-                if let Ok(Some(_)) = sistema.stdin().read_key() {
-                    break;
-                }
-                sistema.boot_services().stall(10_000);
-            }
-
-            writeln!(sistema.stdout(), "calc [n1] [op] [n2] : Realiza operaciones matematicas (+ - * /)").unwrap();
-            writeln!(sistema.stdout(), "wait [seg]          : Pausa la ejecucion por N segundos").unwrap();
-            writeln!(sistema.stdout(), "alias [a] [c]       : Crea un atajo para un comando").unwrap();
-            writeln!(sistema.stdout(), "game [g]            : Ejecuta un juego (Ej: game buggy)").unwrap();
-            writeln!(sistema.stdout(), "ascii               : Muestra la tabla de caracteres ASCII").unwrap();
-
-            loop {
-                if let Ok(Some(_)) = sistema.stdin().read_key() {
-                    break;
-                }
-                sistema.boot_services().stall(10_000);
-            }
-
-            writeln!(sistema.stdout(), "app [a]      : Ejecuta una app (Ej: app zim)").unwrap();
-            writeln!(sistema.stdout(), "reslist      : Lista resoluciones soportadas").unwrap();
-            writeln!(sistema.stdout(), "controls     : Muestra los controles").unwrap();
-            writeln!(sistema.stdout(), "beep [f] [m] : Emite un sonido (Hz) por N milisegundos").unwrap();
-            writeln!(sistema.stdout(), "tskm         : Monitor de Sistema").unwrap();
-
-            loop {
-                if let Ok(Some(_)) = sistema.stdin().read_key() {
-                    break;
-                }
-                sistema.boot_services().stall(10_000);
-            }
-
-            writeln!(sistema.stdout(), "exit         : Sale de root o del shell").unwrap();
-            writeln!(sistema.stdout(), "reboot       : Reinicia la computadora").unwrap();
-            writeln!(sistema.stdout(), "shutdown     : Apaga la computadora").unwrap();
-            writeln!(sistema.stdout(), "---------------------------------------").unwrap();
-            writeln!(sistema.stdout(), "Tip: Puedes usar '&&' para encadenar comandos.").unwrap();
-            writeln!(sistema.stdout(), "---------------------------------------").unwrap();
-        }
         "optz" => {
             writeln!(sistema.stdout(), "Optimizacion completada exitosamente.").unwrap();
         }
@@ -632,10 +605,10 @@ pub fn ejecutar_comando(
                 writeln!(sistema.stdout(), "------------------").unwrap();
                 writeln!(sistema.stdout(), "{}@mtrx-os", usuario).unwrap();
                 writeln!(sistema.stdout(), "------------------").unwrap();
-                writeln!(sistema.stdout(), "OS: MtrxOS v1.0-Initial-Release").unwrap();
+                writeln!(sistema.stdout(), "OS: MtrxOS v1.1-rc1").unwrap();
                 writeln!(sistema.stdout(), "Kernel: UEFI Mtrx Kernel").unwrap();
                 writeln!(sistema.stdout(), "SysX: UEFI | GOP").unwrap();
-                writeln!(sistema.stdout(), "Arquitectura: x86_64").unwrap();
+                writeln!(sistema.stdout(), "Arquitectura: x86_64 (amd64)").unwrap();
                 writeln!(sistema.stdout(), "Tipo: Live OS").unwrap();
 
 				loop {
@@ -646,7 +619,7 @@ pub fn ejecutar_comando(
 				}
                 
                 writeln!(sistema.stdout(), "Shell: Mtrx Shell / M Shell").unwrap();
-				writeln!(sistema.stdout(), "Audio: Mtrx Mixer").unwrap();
+				writeln!(sistema.stdout(), "Audio: Mtrx Audio Mixer").unwrap();
                 writeln!(sistema.stdout(), "UI: SDMLL").unwrap();
                 writeln!(sistema.stdout(), "GL: MtrxGL").unwrap();
                 writeln!(sistema.stdout(), "CPU: {}", cpu).unwrap();
@@ -654,12 +627,7 @@ pub fn ejecutar_comando(
             }
         }
         "sudo" => {
-            if !*es_root {
-                *es_root = true;
-                writeln!(sistema.stdout(), "Privilegios elevados a root.").unwrap();
-            } else {
-                writeln!(sistema.stdout(), "Ya eres usuario root.").unwrap();
-            }
+            *es_root = true;
         }
         "clear" => {
             sistema.stdout().clear().unwrap();
@@ -667,9 +635,6 @@ pub fn ejecutar_comando(
         "exit" => {
             if *es_root {
                 *es_root = false;
-                writeln!(sistema.stdout(), "Ya no eres usuario root.").unwrap();
-            } else {
-                writeln!(sistema.stdout(), "No puedes salir del kernel de MtrxOS.").unwrap();
             }
         }
         "uname" => {
@@ -682,11 +647,8 @@ pub fn ejecutar_comando(
                 nombre_buffer[..len].copy_from_slice(&bytes[..len]);
                 *nombre_len = len;
 
-                writeln!(sistema.stdout(), "Nombre de usuario actualizado a: {}", argumentos).unwrap();
             } else {
                 let nombre_actual = core::str::from_utf8(&nombre_buffer[..*nombre_len]).unwrap_or("pc");
-                writeln!(sistema.stdout(), "Nombre actual: {}", nombre_actual).unwrap();
-                writeln!(sistema.stdout(), "Uso para cambiar: uname [nuevo_nombre]").unwrap();
             }
         }
         _ => {

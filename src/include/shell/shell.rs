@@ -44,23 +44,6 @@ pub fn run(
                             }
                         }
                     }
-                    Key::Special(ScanCode::FUNCTION_1) => {
-                        let cmd = b"help";
-                        for (i, &byte) in cmd.iter().enumerate() {
-                            buffer[i] = byte;
-                        }
-                        indice = cmd.len();
-                        writeln!(sistema.stdout(), "help").unwrap();
-                        break;
-                    }
-                    Key::Special(ScanCode::ESCAPE) => {
-                        writeln!(sistema.stdout(), "\nApagando el sistema...").unwrap();
-                        sistema.runtime_services().reset(
-                            ResetType::SHUTDOWN,
-                            uefi::Status::SUCCESS,
-                            None,
-                        );
-                    }
                     _ => {}
                 }
             }
@@ -101,7 +84,7 @@ pub fn run(
                     "m" => "matrix",
                     "f" => "fetch",
                     "c" => "clear",
-                    "h" => "help",
+                    "s" => "shutdown",
                     _   => comando_crudo,
                 }
             };

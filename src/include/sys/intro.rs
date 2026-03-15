@@ -11,13 +11,12 @@ pub fn mostrar_intro(sistema: &mut SystemTable<Boot>) {
     };
 
     let logo = [
-        "       _       ",
-        "      / \\      ",
-        "     /   \\     ",
-        "    /     \\    ",
-        "   /  /\\   \\   ",
-        "  /  /  \\   \\  ",
-        " /__/    \\___\\  ",
+        "      /\\      ",
+        "     /  \\     ",
+        "    /    \\    ",
+        "   /  /\\  \\   ",
+        "  /  /  \\  \\  ",
+        " /__/    \\__\\  ",
     ];
 
     let logo_alto = logo.len();

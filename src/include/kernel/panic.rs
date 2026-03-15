@@ -8,13 +8,12 @@ pub fn ejecutar_panic(sistema: &mut SystemTable<Boot>, motivo: &str) {
     let _ = stdout.clear();
 
     let logo = [
-        "       _       ",
-        "      / \\      ",
-        "     /   \\     ",
-        "    /     \\    ",
-        "   /  /\\   \\   ",
-        "  /  /  \\   \\  ",
-        " /__/    \\___\\  ",
+        "      /\\      ",
+        "     /  \\     ",
+        "    /    \\    ",
+        "   /  /\\  \\   ",
+        "  /  /  \\  \\  ",
+        " /__/    \\__\\  ",
     ];
 
     for (i, linea) in logo.iter().enumerate() {
