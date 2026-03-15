@@ -1,0 +1,43 @@
+MtrxOS (MatrixOS)
+=================
+
+Welcome to the MtrxOS repository
+--------------------------------
+
+Logo:
+-----
+        /\
+       /  \
+      /    \
+     /  /\  \
+    /__/  \__\
+
+About:
+------
+
+This system is not intended to be a "plug-and-play" or
+consumer-ready OS. It is a foundational framework provided
+as-is. You are expected to fork it, customize it, and add
+your own features to build a complete operating system. This
+is a minimalist toolkit, not a pre-packaged distribution for
+general use.
+
+Specifications:
+---------------
+
+To run or develop for MtrxOS, the target environment must
+meet the following hardware requirements:
+
+* Architecture: x86_64
+* Firmware: UEFI (Unified Extensible Firmware Interface).
+* Graphics: GOP (Graphics Output Protocol) support.
+
+[!] Note: MtrxOS currently only utilizes 1 CPU core.
+Any additional cores will remain inactive.
+
+License:
+--------
+
+This project is licensed under the MIT License.
+For more details, please refer to the LICENSE file in the root
+directory.
