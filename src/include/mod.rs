@@ -11,12 +11,6 @@ pub use uefi::proto::console::gop::GraphicsOutput;
 pub use uefi::proto::console::text::{Color, Key, ScanCode};
 pub use uefi::table::runtime::ResetType;
 
-// addons
-
-// ---
-
-// apps
-
 #[path = "apps/notes.rs"]
 pub mod notes;
 
@@ -29,34 +23,14 @@ pub mod zim;
 #[path = "apps/imageviewer.rs"]
 pub mod imageviewer;
 
-// ---
-
-// audio
-
 #[path = "audio/sound.rs"]
 pub mod sound;
-
-// ---
-
-// audios
 
 #[path = "audios/song1.rs"]
 pub mod song1;
 
-// ---
-
-// commands
-
 #[path = "commands/commands.rs"]
 pub mod commands;
-
-// ---
-
-// drivers
-
-// ---
-
-// games
 
 #[path = "games/buggy.rs"]
 pub mod buggy;
@@ -73,10 +47,6 @@ pub mod raycaster;
 #[path = "games/flightsm.rs"]
 pub mod flightsm;
 
-// ---
-
-// gl
-
 #[path = "gl/gltest.rs"]
 pub mod gltest;
 
@@ -89,17 +59,11 @@ pub mod gltest3;
 #[path = "gl/mtrx_gl.rs"]
 pub mod mtrx_gl;
 
-// kernel
-
 #[path = "kernel/ocpu.rs"]
 pub mod ocpu;
 
 #[path = "kernel/panic.rs"]
 pub mod panic;
-
-// ---
-
-// laaps
 
 #[path = "laapps/calculadora.rs"]
 pub mod calculadora;
@@ -107,30 +71,14 @@ pub mod calculadora;
 #[path = "laapps/monitor.rs"]
 pub mod monitor;
 
-// ---
-
-// lade
-
 #[path = "lade/lade.rs"]
 pub mod lade;
-
-// ---
-
-// sdmll
 
 #[path = "sdmll/sdmll.rs"]
 pub mod sdmll;
 
-// ---
-
-// shell
-
 #[path = "shell/shell.rs"]
 pub mod shell;
-
-// ---
-
-// sys
 
 #[path = "sys/intro.rs"]
 pub mod intro;
@@ -138,13 +86,7 @@ pub mod intro;
 #[path = "sys/sysconf.rs"]
 pub mod sysconf;
 
-// ---
-
-// ui
-
 #[path = "ui/sdmlle1.rs"]
 pub mod sdmlle1;
-
-// ---
 
 pub use crate::mtrx_gl::{MtrxGl, Vec2};
