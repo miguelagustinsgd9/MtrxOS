@@ -13,6 +13,37 @@ pub fn ejecutar_comando(
     num_alias: &mut usize,
 ) {
     match comando {
+        "power" => {
+            if !*es_root {
+                let _ = writeln!(sistema.stdout(), "Null");
+            } else {
+                let cpuid_6 = core::arch::x86_64::__cpuid(0x06);
+                let soporta_bias = (cpuid_6.ecx & (1 << 3)) != 0;
+
+                if !soporta_bias {
+                    let _ = writeln!(sistema.stdout(), "Error: Hardware no compatible.");
+                } else {
+                    let modo = argumentos.trim();
+                    let valor = match modo {
+                        "perf" => Some(0u32),
+                        "bal"  => Some(7u32),
+                        "save" => Some(15u32),
+                        _ => {
+                            let _ = writeln!(sistema.stdout(), "Uso: power [perf|bal|save]");
+                            None
+                        }
+                    };
+
+                    if let Some(v) = valor {
+                        unsafe {
+                            let msr: u32 = 0x1B0;
+                            core::arch::asm!("wrmsr", in("ecx") msr, in("eax") v, in("edx") 0u32);
+                            let _ = writeln!(sistema.stdout(), "Perfil: {}", modo);
+                        }
+                    }
+                }
+            }
+        }
         "song1" => {
             song1::reproducir(sistema);
         }
@@ -146,7 +177,7 @@ pub fn ejecutar_comando(
             }
         }
         "cpuinfo" => {
-            let r = unsafe { core::arch::x86_64::__cpuid(1) };
+            let r = core::arch::x86_64::__cpuid(1);
             let family = (r.eax >> 8) & 0xF;
             let model = (r.eax >> 4) & 0xF;
 
@@ -605,7 +636,7 @@ pub fn ejecutar_comando(
                 writeln!(sistema.stdout(), "------------------").unwrap();
                 writeln!(sistema.stdout(), "{}@mtrx-os", usuario).unwrap();
                 writeln!(sistema.stdout(), "------------------").unwrap();
-                writeln!(sistema.stdout(), "OS: MtrxOS v1.1-rc1").unwrap();
+                writeln!(sistema.stdout(), "OS: MtrxOS v1.1-rc2").unwrap();
                 writeln!(sistema.stdout(), "Kernel: UEFI Mtrx Kernel").unwrap();
                 writeln!(sistema.stdout(), "SysX: UEFI | GOP").unwrap();
                 writeln!(sistema.stdout(), "Arquitectura: x86_64 (amd64)").unwrap();
@@ -627,7 +658,48 @@ pub fn ejecutar_comando(
             }
         }
         "sudo" => {
-            *es_root = true;
+            let password_correcta = "m4tr1x";
+            let mut autenticado = false;
+            let nombre_actual = core::str::from_utf8(&nombre_buffer[..*nombre_len]).unwrap_or("pc");
+
+            for _ in 0..3 {
+                let _ = write!(sistema.stdout(), "[sudo] contraseña para {}: ", nombre_actual);
+                
+                let mut entrada_pass = [0u8; 6];
+                let mut idx = 0;
+
+                while idx < 6 {
+                    if let Ok(Some(key)) = sistema.stdin().read_key() {
+                        if let uefi::proto::console::text::Key::Printable(c) = key {
+                            let caracter = u16::from(c) as u8;
+                            if caracter == 13 || caracter == 10 { break; }
+                            entrada_pass[idx] = caracter;
+                            idx += 1;
+                            let _ = write!(sistema.stdout(), "*");
+                        }
+                    }
+                }
+                let _ = writeln!(sistema.stdout(), "");
+
+                if idx == 6 && &entrada_pass == password_correcta.as_bytes() {
+                    autenticado = true;
+                    break;
+                } else {
+                    let _ = writeln!(sistema.stdout(), "Pruebe otra vez.");
+                }
+            }
+
+            if autenticado {
+                *es_root = true;
+                if !argumentos.is_empty() {
+                    let mut partes = argumentos.splitn(2, ' ');
+                    let cmd_sudo = partes.next().unwrap_or("");
+                    let args_sudo = partes.next().unwrap_or("");
+                    ejecutar_comando(cmd_sudo, args_sudo, sistema, es_root, nombre_buffer, nombre_len, ticks_inicio, microsegundos_frame, tabla_alias_corto, tabla_alias_largo, num_alias);
+                }
+            } else {
+                let _ = writeln!(sistema.stdout(), "sudo: 3 intentos de contraseña incorrectos");
+            }
         }
         "clear" => {
             sistema.stdout().clear().unwrap();

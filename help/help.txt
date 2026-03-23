@@ -1,0 +1,25 @@
+Build .EFI:
+
+cargo build --release
+
+cp target/x86_64-unknown-uefi/release/valenos.efi iso_root/EFI/BOOT/BOOTX64.EFI
+
+Compile:
+
+grub-mkrescue -o mtrxos.iso iso_root
+
+Test:
+
+qemu-system-x86_64 \
+  -bios /usr/share/ovmf/OVMF.fd \
+  -cdrom mtrxos.iso \
+  -m 512M \
+  -vga std \
+  -machine pcspk-audiodev=snd0 \
+  -audiodev pa,id=snd0,out.mixing-engine=off
+
+Clean:
+
+cargo clean
+
+rm mtrxos.iso && rm Cargo.lock && rm -rf target/ && rm iso_root/EFI/BOOT/BOOTX64.EFI

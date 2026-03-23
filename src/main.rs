@@ -9,6 +9,8 @@ fn main(_manejador: Handle, mut sistema: SystemTable<Boot>) -> Status {
     uefi_services::init(&mut sistema).unwrap();
     let _ = sistema.stdout().enable_cursor(false);
 
+    intro::mostrar_intro(&mut sistema);
+
     let mut nombre_buffer = [0u8; 32];
     nombre_buffer[0..2].copy_from_slice(b"pc");
     let mut nombre_len = 2;
